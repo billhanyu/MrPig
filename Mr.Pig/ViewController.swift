@@ -32,6 +32,8 @@ class ViewController: UIViewController {
     var jumpForwardAction: SCNAction!
     var jumpBackwardAction: SCNAction!
     
+    var triggerGameOver: SCNAction!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // 4
@@ -98,6 +100,19 @@ class ViewController: UIViewController {
         jumpRightAction = SCNAction.group([turnRightAction, bounceAction, moveRightAction])
         jumpForwardAction = SCNAction.group([turnForwardAction, bounceAction, moveForwardAction])
         jumpBackwardAction = SCNAction.group([turnBackwardAction, bounceAction, moveBackwardAction])
+        
+        let spinAround = SCNAction.rotateByX(0, y: convertToRadians(720), z: 0, duration: 2.0)
+        let riseUp = SCNAction.moveByX(0, y: 10, z: 0, duration: 2.0)
+        let fadeOut = SCNAction.fadeOpacityTo(0, duration: 2.0)
+        let goodByePig = SCNAction.group([spinAround, riseUp, fadeOut])
+        
+        let gameOver = SCNAction.runBlock { (node:SCNNode) -> Void in
+            self.pigNode.position = SCNVector3(x:0, y:0, z:0)
+            self.pigNode.opacity = 1.0
+            self.startSplash()
+        }
+        
+        triggerGameOver = SCNAction.sequence([goodByePig, gameOver])
     }
     
     func setupTraffic() {
@@ -125,15 +140,15 @@ class ViewController: UIViewController {
         scnView.addGestureRecognizer(swipeRight)
         
         let swipeLeft: UISwipeGestureRecognizer = UISwipeGestureRecognizer(target: self, action: #selector(ViewController.handleGesture(_:)))
-        swipeRight.direction = .Left
+        swipeLeft.direction = .Left
         scnView.addGestureRecognizer(swipeLeft)
         
         let swipeUp: UISwipeGestureRecognizer = UISwipeGestureRecognizer(target: self, action: #selector(ViewController.handleGesture(_:)))
-        swipeRight.direction = .Up
+        swipeUp.direction = .Up
         scnView.addGestureRecognizer(swipeUp)
         
         let swipeDown: UISwipeGestureRecognizer = UISwipeGestureRecognizer(target: self, action: #selector(ViewController.handleGesture(_:)))
-        swipeRight.direction = .Down
+        swipeDown.direction = .Down
         scnView.addGestureRecognizer(swipeDown)
     }
     
@@ -155,6 +170,7 @@ class ViewController: UIViewController {
     }
     
     func stopGame() {
+        pigNode.runAction(triggerGameOver)
         game.state = .GameOver
         game.reset()
     }
