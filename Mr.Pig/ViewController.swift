@@ -24,6 +24,14 @@ class ViewController: UIViewController {
     var lightFollowNode: SCNNode!
     var trafficNode: SCNNode!
     
+    var driveLeftAction: SCNAction!
+    var driveRightAction: SCNAction!
+    
+    var jumpLeftAction: SCNAction!
+    var jumpRightAction: SCNAction!
+    var jumpForwardAction: SCNAction!
+    var jumpBackwardAction: SCNAction!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // 4
@@ -57,12 +65,76 @@ class ViewController: UIViewController {
     }
     
     func setupActions() {
+        driveLeftAction = SCNAction.repeatActionForever(SCNAction.moveBy(SCNVector3Make(-2.0, 0, 0), duration: 1.0))
+        driveRightAction = SCNAction.repeatActionForever(SCNAction.moveBy(SCNVector3Make(2.0, 0, 0), duration: 1.0))
+        
+        let duration = 0.2
+        
+        let bounceUpAction = SCNAction.moveByX(0, y: 1.0, z: 0, duration:
+            duration * 0.5)
+        let bounceDownAction = SCNAction.moveByX(0, y: -1.0, z: 0, duration:
+            duration * 0.5)
+        
+        bounceUpAction.timingMode = .EaseOut
+        bounceDownAction.timingMode = .EaseIn
+        
+        let bounceAction = SCNAction.sequence([bounceUpAction, bounceDownAction])
+        
+        let moveLeftAction = SCNAction.moveByX(-1.0, y: 0, z: 0, duration:
+            duration)
+        let moveRightAction = SCNAction.moveByX(1.0, y: 0, z: 0, duration:
+            duration)
+        let moveForwardAction = SCNAction.moveByX(0, y: 0, z: -1.0, duration:
+            duration)
+        let moveBackwardAction = SCNAction.moveByX(0, y: 0, z: 1.0, duration:
+            duration)
+        
+        let turnLeftAction = SCNAction.rotateToX(0, y: convertToRadians(-90), z: 0, duration: duration, shortestUnitArc: true)
+        let turnRightAction = SCNAction.rotateToX(0, y: convertToRadians(90), z: 0, duration: duration, shortestUnitArc: true)
+        let turnForwardAction = SCNAction.rotateToX(0, y: convertToRadians(180), z: 0, duration: duration, shortestUnitArc: true)
+        let turnBackwardAction = SCNAction.rotateToX(0, y: convertToRadians(0), z: 0, duration: duration, shortestUnitArc: true)
+        
+        jumpLeftAction = SCNAction.group([turnLeftAction, bounceAction, moveLeftAction])
+        jumpRightAction = SCNAction.group([turnRightAction, bounceAction, moveRightAction])
+        jumpForwardAction = SCNAction.group([turnForwardAction, bounceAction, moveForwardAction])
+        jumpBackwardAction = SCNAction.group([turnBackwardAction, bounceAction, moveBackwardAction])
     }
     
     func setupTraffic() {
+        for node in trafficNode.childNodes {
+            if node.name?.containsString("Bus") == true {
+                driveRightAction.speed = 1.0
+                driveLeftAction.speed = 1.0
+            }
+            else {
+                driveRightAction.speed = 2.0
+                driveLeftAction.speed = 2.0
+            }
+            if node.eulerAngles.y > 0 {
+                node.runAction(driveLeftAction)
+            }
+            else {
+                node.runAction(driveRightAction)
+            }
+        }
     }
     
     func setupGestures() {
+        let swipeRight: UISwipeGestureRecognizer = UISwipeGestureRecognizer(target: self, action: #selector(ViewController.handleGesture(_:)))
+        swipeRight.direction = .Right
+        scnView.addGestureRecognizer(swipeRight)
+        
+        let swipeLeft: UISwipeGestureRecognizer = UISwipeGestureRecognizer(target: self, action: #selector(ViewController.handleGesture(_:)))
+        swipeRight.direction = .Left
+        scnView.addGestureRecognizer(swipeLeft)
+        
+        let swipeUp: UISwipeGestureRecognizer = UISwipeGestureRecognizer(target: self, action: #selector(ViewController.handleGesture(_:)))
+        swipeRight.direction = .Up
+        scnView.addGestureRecognizer(swipeUp)
+        
+        let swipeDown: UISwipeGestureRecognizer = UISwipeGestureRecognizer(target: self, action: #selector(ViewController.handleGesture(_:)))
+        swipeRight.direction = .Down
+        scnView.addGestureRecognizer(swipeDown)
     }
     
     func setupSounds() {
@@ -97,6 +169,28 @@ class ViewController: UIViewController {
             self.setupSounds()
             self.splashScene.paused = false
         })
+    }
+    
+    func handleGesture(sender: UISwipeGestureRecognizer) {
+        guard game.state == .Playing else {
+            return
+        }
+        
+        switch sender.direction {
+        case UISwipeGestureRecognizerDirection.Up:
+            pigNode.runAction(jumpForwardAction)
+        case UISwipeGestureRecognizerDirection.Down:
+            pigNode.runAction(jumpBackwardAction)
+        case UISwipeGestureRecognizerDirection.Left:
+            if pigNode.position.x > -15 {
+                pigNode.runAction(jumpLeftAction)
+            }
+        case UISwipeGestureRecognizerDirection.Right:
+            if pigNode.position.x < 15 {
+                pigNode.runAction(jumpRightAction)
+            }
+        default: break
+        }
     }
     
     override func touchesBegan(touches: Set<UITouch>, withEvent event:
