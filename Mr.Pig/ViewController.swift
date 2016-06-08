@@ -24,6 +24,12 @@ class ViewController: UIViewController {
     var lightFollowNode: SCNNode!
     var trafficNode: SCNNode!
     
+    var collisionNode: SCNNode!
+    var frontCollisionNode: SCNNode!
+    var backCollisionNode: SCNNode!
+    var leftCollisionNode: SCNNode!
+    var rightCollisionNode: SCNNode!
+    
     var driveLeftAction: SCNAction!
     var driveRightAction: SCNAction!
     
@@ -55,6 +61,7 @@ class ViewController: UIViewController {
         splashScene = SCNScene(named: "/MrPig.scnassets/SplashScene.scn")
         // 2
         scnView.scene = splashScene
+        scnView.delegate = self
     }
     
     func setupNodes() {
@@ -63,7 +70,13 @@ class ViewController: UIViewController {
         cameraNode.addChildNode(game.hudNode)
         cameraFollowNode = gameScene.rootNode.childNodeWithName("FollowCamera", recursively: true)!
         lightFollowNode = gameScene.rootNode.childNodeWithName("FollowLight", recursively: true)!
-        trafficNode = gameScene.rootNode.childNodeWithName("Traffic", recursively: true)
+        trafficNode = gameScene.rootNode.childNodeWithName("Traffic", recursively: true)!
+        
+        collisionNode = gameScene.rootNode.childNodeWithName("Collision", recursively: true)!
+        frontCollisionNode = gameScene.rootNode.childNodeWithName("Front", recursively: true)!
+        backCollisionNode = gameScene.rootNode.childNodeWithName("Back", recursively: true)!
+        leftCollisionNode = gameScene.rootNode.childNodeWithName("Left", recursively: true)!
+        rightCollisionNode = gameScene.rootNode.childNodeWithName("Right", recursively: true)!
     }
     
     func setupActions() {
@@ -216,6 +229,10 @@ class ViewController: UIViewController {
         }
     }
     
+    func updatePositions() {
+        collisionNode.position = pigNode.presentationNode.position
+    }
+    
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
     }
@@ -226,5 +243,15 @@ class ViewController: UIViewController {
     
     override func shouldAutorotate() -> Bool {
         return false
+    }
+}
+
+extension ViewController: SCNSceneRendererDelegate {
+    func renderer(renderer: SCNSceneRenderer, didApplyAnimationsAtTime time: NSTimeInterval) {
+        guard game.state == .Playing else {
+            return
+        }
+        game.updateHUD()
+        updatePositions()
     }
 }
