@@ -339,6 +339,10 @@ extension ViewController : SCNPhysicsContactDelegate {
             })
             game.collectCoin()
         }
+        if contactNode.physicsBody?.categoryBitMask == BitMaskHouse {
+            if game.bankCoins() == true {
+            }
+        }
     }
     
     func physicsWorld(world: SCNPhysicsWorld, didEndContact contact: SCNPhysicsContact) {
