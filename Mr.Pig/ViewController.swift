@@ -262,6 +262,12 @@ class ViewController: UIViewController {
     
     func updatePositions() {
         collisionNode.position = pigNode.presentationNode.position
+        
+        //update camera position
+        let lerpX = (pigNode.position.x - cameraFollowNode.position.x) * 0.05
+        let lerpZ = (pigNode.position.z - cameraFollowNode.position.z) * 0.05
+        cameraFollowNode.position.x += lerpX
+        cameraFollowNode.position.z += lerpZ
     }
     
     override func didReceiveMemoryWarning() {
