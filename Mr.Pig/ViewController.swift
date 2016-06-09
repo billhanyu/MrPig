@@ -40,6 +40,17 @@ class ViewController: UIViewController {
     
     var triggerGameOver: SCNAction!
     
+    let BitMaskPig = 1
+    let BitMaskVehicle = 2
+    let BitMaskObstacle = 4
+    let BitMaskFront = 8
+    let BitMaskBack = 16
+    let BitMaskLeft = 32
+    let BitMaskRight = 64
+    let BitMaskCoin = 128
+    let BitMaskHouse = 256
+    var activeCollisionsBitMask: Int = 0
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // 4
@@ -62,6 +73,7 @@ class ViewController: UIViewController {
         // 2
         scnView.scene = splashScene
         scnView.delegate = self
+        gameScene.physicsWorld.contactDelegate = self
     }
     
     func setupNodes() {
@@ -77,6 +89,14 @@ class ViewController: UIViewController {
         backCollisionNode = gameScene.rootNode.childNodeWithName("Back", recursively: true)!
         leftCollisionNode = gameScene.rootNode.childNodeWithName("Left", recursively: true)!
         rightCollisionNode = gameScene.rootNode.childNodeWithName("Right", recursively: true)!
+        
+        pigNode.physicsBody?.contactTestBitMask = BitMaskVehicle | BitMaskCoin |
+        BitMaskHouse
+        
+        frontCollisionNode.physicsBody?.contactTestBitMask = BitMaskObstacle
+        backCollisionNode.physicsBody?.contactTestBitMask = BitMaskObstacle
+        leftCollisionNode.physicsBody?.contactTestBitMask = BitMaskObstacle
+        rightCollisionNode.physicsBody?.contactTestBitMask = BitMaskObstacle
     }
     
     func setupActions() {
@@ -148,19 +168,19 @@ class ViewController: UIViewController {
     }
     
     func setupGestures() {
-        let swipeRight: UISwipeGestureRecognizer = UISwipeGestureRecognizer(target: self, action: #selector(ViewController.handleGesture(_:)))
+        let swipeRight: UISwipeGestureRecognizer = UISwipeGestureRecognizer(target: self, action: #selector(ViewController.handleGestures(_:)))
         swipeRight.direction = .Right
         scnView.addGestureRecognizer(swipeRight)
         
-        let swipeLeft: UISwipeGestureRecognizer = UISwipeGestureRecognizer(target: self, action: #selector(ViewController.handleGesture(_:)))
+        let swipeLeft: UISwipeGestureRecognizer = UISwipeGestureRecognizer(target: self, action: #selector(ViewController.handleGestures(_:)))
         swipeLeft.direction = .Left
         scnView.addGestureRecognizer(swipeLeft)
         
-        let swipeUp: UISwipeGestureRecognizer = UISwipeGestureRecognizer(target: self, action: #selector(ViewController.handleGesture(_:)))
+        let swipeUp: UISwipeGestureRecognizer = UISwipeGestureRecognizer(target: self, action: #selector(ViewController.handleGestures(_:)))
         swipeUp.direction = .Up
         scnView.addGestureRecognizer(swipeUp)
         
-        let swipeDown: UISwipeGestureRecognizer = UISwipeGestureRecognizer(target: self, action: #selector(ViewController.handleGesture(_:)))
+        let swipeDown: UISwipeGestureRecognizer = UISwipeGestureRecognizer(target: self, action: #selector(ViewController.handleGestures(_:)))
         swipeDown.direction = .Down
         scnView.addGestureRecognizer(swipeDown)
     }
@@ -200,9 +220,20 @@ class ViewController: UIViewController {
         })
     }
     
-    func handleGesture(sender: UISwipeGestureRecognizer) {
+    func handleGestures(sender: UISwipeGestureRecognizer) {
         guard game.state == .Playing else {
             return
+        }
+        
+        let activeFrontCollision = activeCollisionsBitMask & BitMaskFront == BitMaskFront
+        let activeBackCollision = activeCollisionsBitMask & BitMaskBack == BitMaskBack
+        let activeLeftCollision = activeCollisionsBitMask & BitMaskLeft == BitMaskLeft
+        let activeRightCollision = activeCollisionsBitMask & BitMaskRight == BitMaskRight
+        guard (sender.direction == .Up && !activeFrontCollision) ||
+            (sender.direction == .Down && !activeBackCollision) ||
+            (sender.direction == .Left && !activeLeftCollision) ||
+            (sender.direction == .Right && !activeRightCollision) else {
+                return
         }
         
         switch sender.direction {
@@ -253,5 +284,52 @@ extension ViewController: SCNSceneRendererDelegate {
         }
         game.updateHUD()
         updatePositions()
+    }
+}
+
+extension ViewController : SCNPhysicsContactDelegate {
+    func physicsWorld(world: SCNPhysicsWorld, didBeginContact contact: SCNPhysicsContact) {
+        guard game.state == .Playing else {
+            return
+        }
+        var collisionBoxNode: SCNNode!
+        if contact.nodeA.physicsBody?.categoryBitMask == BitMaskObstacle {
+            collisionBoxNode = contact.nodeB
+        } else {
+            collisionBoxNode = contact.nodeA
+        }
+        
+        activeCollisionsBitMask |= collisionBoxNode.physicsBody!.categoryBitMask
+        
+        var contactNode: SCNNode!
+        if contact.nodeA.physicsBody?.categoryBitMask == BitMaskPig {
+            contactNode = contact.nodeB
+        } else {
+            contactNode = contact.nodeA
+        }
+        
+        if contactNode.physicsBody?.categoryBitMask == BitMaskVehicle {
+            stopGame()
+        }
+        if contactNode.physicsBody?.categoryBitMask == BitMaskCoin {
+            contactNode.hidden = true
+            contactNode.runAction(SCNAction.waitForDurationThenRunBlock(60) { (node: SCNNode!) -> Void in
+                node.hidden = false
+            })
+            game.collectCoin()
+        }
+    }
+    
+    func physicsWorld(world: SCNPhysicsWorld, didEndContact contact: SCNPhysicsContact) {
+        guard game.state == .Playing else {
+            return
+        }
+        var collisionBoxNode: SCNNode!
+        if contact.nodeA.physicsBody?.categoryBitMask == BitMaskObstacle {
+            collisionBoxNode = contact.nodeB
+        } else {
+            collisionBoxNode = contact.nodeA
+        }
+        activeCollisionsBitMask &= ~collisionBoxNode.physicsBody!.categoryBitMask
     }
 }
