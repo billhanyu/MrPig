@@ -268,6 +268,17 @@ class ViewController: UIViewController {
         let lerpZ = (pigNode.position.z - cameraFollowNode.position.z) * 0.05
         cameraFollowNode.position.x += lerpX
         cameraFollowNode.position.z += lerpZ
+        lightFollowNode.position = cameraFollowNode.position
+    }
+    
+    func updateTraffic() {
+        for node in trafficNode.childNodes {
+            if node.position.x > 25 {
+                node.position.x = -25
+            } else if node.position.x < -25 {
+                node.position.x = 25
+            }
+        }
     }
     
     override func didReceiveMemoryWarning() {
@@ -284,6 +295,10 @@ class ViewController: UIViewController {
 }
 
 extension ViewController: SCNSceneRendererDelegate {
+    func renderer(renderer: SCNSceneRenderer, updateAtTime time: NSTimeInterval) {
+        updateTraffic()
+    }
+    
     func renderer(renderer: SCNSceneRenderer, didApplyAnimationsAtTime time: NSTimeInterval) {
         guard game.state == .Playing else {
             return
