@@ -186,6 +186,32 @@ class ViewController: UIViewController {
     }
     
     func setupSounds() {
+        if game.state == .TapToPlay {
+            let music = SCNAudioSource(fileNamed: "MrPig.scnassets/Audio/Music.mp3")!
+            music.volume = 0.3;
+            music.loops = true
+            music.shouldStream = true
+            music.positional = false
+            let musicPlayer = SCNAudioPlayer(source: music)
+            
+            splashScene.rootNode.addAudioPlayer(musicPlayer)
+        }
+        else if game.state == .Playing {
+            let traffic = SCNAudioSource(fileNamed: "MrPig.scnassets/Audio/Traffic.mp3")!
+            traffic.volume = 0.3
+            traffic.loops = true
+            traffic.shouldStream = true
+            traffic.positional = true
+            
+            let trafficPlayer = SCNAudioPlayer(source: traffic)
+            gameScene.rootNode.addAudioPlayer(trafficPlayer)
+            
+            game.loadSound("Jump", fileNamed: "MrPig.scnassets/Audio/Jump.wav")
+            game.loadSound("Blocked", fileNamed: "MrPig.scnassets/Audio/Blocked.wav")
+            game.loadSound("Crash", fileNamed: "MrPig.scnassets/Audio/Crash.wav")
+            game.loadSound("CollectCoin", fileNamed: "MrPig.scnassets/Audio/CollectCoin.wav")
+            game.loadSound("BankCoin", fileNamed: "MrPig.scnassets/Audio/BankCoin.wav")
+        }
     }
     
     func startGame() {
@@ -233,6 +259,7 @@ class ViewController: UIViewController {
             (sender.direction == .Down && !activeBackCollision) ||
             (sender.direction == .Left && !activeLeftCollision) ||
             (sender.direction == .Right && !activeRightCollision) else {
+                game.playSound(pigNode, name: "Blocked")
                 return
         }
         
@@ -251,6 +278,8 @@ class ViewController: UIViewController {
             }
         default: break
         }
+        
+        game.playSound(pigNode, name: "Jump")
     }
     
     override func touchesBegan(touches: Set<UITouch>, withEvent event:
@@ -275,7 +304,8 @@ class ViewController: UIViewController {
         for node in trafficNode.childNodes {
             if node.position.x > 25 {
                 node.position.x = -25
-            } else if node.position.x < -25 {
+            }
+            else if node.position.x < -25 {
                 node.position.x = 25
             }
         }
@@ -296,7 +326,7 @@ class ViewController: UIViewController {
 
 extension ViewController: SCNSceneRendererDelegate {
     func renderer(renderer: SCNSceneRenderer, updateAtTime time: NSTimeInterval) {
-        updateTraffic()
+        
     }
     
     func renderer(renderer: SCNSceneRenderer, didApplyAnimationsAtTime time: NSTimeInterval) {
@@ -305,6 +335,7 @@ extension ViewController: SCNSceneRendererDelegate {
         }
         game.updateHUD()
         updatePositions()
+        updateTraffic()
     }
 }
 
@@ -330,6 +361,7 @@ extension ViewController : SCNPhysicsContactDelegate {
         }
         
         if contactNode.physicsBody?.categoryBitMask == BitMaskVehicle {
+            game.playSound(pigNode, name: "Crash")
             stopGame()
         }
         if contactNode.physicsBody?.categoryBitMask == BitMaskCoin {
@@ -337,10 +369,12 @@ extension ViewController : SCNPhysicsContactDelegate {
             contactNode.runAction(SCNAction.waitForDurationThenRunBlock(60) { (node: SCNNode!) -> Void in
                 node.hidden = false
             })
+            game.playSound(pigNode, name: "CollectCoin")
             game.collectCoin()
         }
         if contactNode.physicsBody?.categoryBitMask == BitMaskHouse {
             if game.bankCoins() == true {
+                game.playSound(pigNode, name: "BankCoin")
             }
         }
     }
